@@ -81,3 +81,10 @@ class Profile:
             if ep['name'] == name:
                 return ep
         return None
+
+    def get_command_endpoint_by_type(self, cmd_type):
+        """Find a command endpoint by its type field."""
+        for ep in self.command_endpoints:
+            if ep.get('type') == cmd_type:
+                return ep
+        return None

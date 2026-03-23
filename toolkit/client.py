@@ -40,10 +40,20 @@ class GameClient:
         # Register
         reg = auth.get('register', {})
         reg_url = self.profile.full_url(reg['path'])
-        reg_body = {
-            'username': self.credentials['username'],
-            'password': self.credentials['password'],
-        }
+        # Build register body from profile template + credentials
+        reg_body = {}
+        template = reg.get('body', {})
+        for key, val in template.items():
+            if val == '{{random_user}}':
+                reg_body[key] = self.credentials['username']
+            elif val == '{{random_pass}}':
+                reg_body[key] = self.credentials['password']
+            else:
+                reg_body[key] = val
+        if 'username' not in reg_body:
+            reg_body['username'] = self.credentials['username']
+        if 'password' not in reg_body:
+            reg_body['password'] = self.credentials['password']
         resp = self._do_request('POST', reg_url, reg_body, auth_required=False)
 
         # Extract token from register response
@@ -98,9 +108,23 @@ class GameClient:
             return {'status': 0, 'error': str(e)}
 
     def submit_command(self, command_type, payload=None):
-        """Submit an async command and poll for result."""
+        """Submit a command — supports both sync (direct POST) and async (submit+poll) models."""
+        # Check if this command has a direct path (sync model)
+        cmd_ep = self.profile.get_command_endpoint_by_type(command_type)
+        if cmd_ep and cmd_ep.get('path'):
+            # Sync model: POST directly to the endpoint path
+            method = cmd_ep.get('method', 'POST')
+            path = cmd_ep['path']
+            url = self.profile.full_url(path)
+            return self._do_request(method, url, payload)
+
+        # Async model: submit to command queue and poll
         cmd_config = self.profile.commands_config
         submit = cmd_config.get('submit', {})
+        if not submit.get('path'):
+            # No command infrastructure — try posting payload to a guessed path
+            return self._do_request('POST', self.profile.full_url(f'/{command_type.replace(".", "/")}'), payload)
+
         submit_url = self.profile.full_url(submit['path'])
 
         body = {

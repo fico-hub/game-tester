@@ -1,0 +1,120 @@
+game:
+  name: "Xiantu"
+  base_url: "https://xiantu-server-production.up.railway.app"
+  api_prefix: "/api"
+
+auth:
+  register:
+    path: "/register"
+    method: POST
+    body:
+      username: "{{random_user}}"
+      password: "{{random_pass}}"
+      race: "african"
+    token_path: "token"
+  login:
+    path: "/login"
+    method: POST
+    body:
+      username: "{{username}}"
+      password: "{{password}}"
+    token_path: "token"
+  header_format: "Bearer {{token}}"
+
+# Xiantu uses synchronous API (no async command model)
+commands:
+  async: false
+
+read_endpoints:
+  - name: "world_status"
+    path: "/world/status"
+    auth: false
+  - name: "realms"
+    path: "/realms"
+    auth: false
+  - name: "races"
+    path: "/races"
+    auth: false
+  - name: "profile"
+    path: "/profile"
+    auth: true
+  - name: "tribulation"
+    path: "/world/tribulation"
+    auth: true
+  - name: "techniques"
+    path: "/techniques"
+    auth: true
+  - name: "wishes_fulfilled"
+    path: "/wishes/fulfilled"
+    auth: true
+
+command_endpoints:
+  - name: "cultivate_offline"
+    type: "cultivate.offline"
+    path: "/cultivate/offline"
+    method: POST
+    payload_schema: {}
+
+  - name: "breakthrough"
+    type: "breakthrough"
+    path: "/breakthrough"
+    method: POST
+    payload_schema: {}
+
+  - name: "secret_realm_explore"
+    type: "secret_realm.explore"
+    path: "/secret-realm/explore"
+    method: POST
+    payload_schema: {}
+
+  - name: "alchemy_start"
+    type: "alchemy.start"
+    path: "/alchemy/start"
+    method: POST
+    payload_schema:
+      recipe:
+        type: string
+        required: false
+      element:
+        type: string
+        enum: [metal, wood, water, fire, earth]
+
+  - name: "world_contribute"
+    type: "world.contribute"
+    path: "/world/contribute"
+    method: POST
+    payload_schema:
+      type:
+        type: string
+        required: true
+        enum: [cultivator, stone, material]
+      amount:
+        type: integer
+        required: false
+        min: 1
+      element:
+        type: string
+        required: false
+        enum: [metal, wood, water, fire, earth]
+
+  - name: "technique_equip"
+    type: "technique.equip"
+    path: "/technique/equip"
+    method: POST
+    payload_schema:
+      techniqueId:
+        type: string
+        required: true
+
+invariants:
+  - name: "cultivation_xp_non_negative"
+    description: "Cultivation XP should never be negative"
+  - name: "spirit_stone_non_negative"
+    description: "Spirit stones should never be negative"
+  - name: "soul_sense_non_negative"
+    description: "Soul sense should never be negative"
+
+resources:
+  - cultivation_xp
+  - spirit_stone
+  - soul_sense
