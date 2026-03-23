@@ -1,0 +1,206 @@
+game:
+  name: "CLI SLG"
+  base_url: "https://clislg.filo.ai"
+  api_prefix: "/api/v3"
+
+auth:
+  register:
+    path: "/auth/register"
+    method: POST
+    body:
+      username: "{{random_user}}"
+      password: "{{random_pass}}"
+    token_path: "token"
+  login:
+    path: "/auth/login"
+    method: POST
+    body:
+      username: "{{username}}"
+      password: "{{password}}"
+    token_path: "token"
+  header_format: "Bearer {{token}}"
+
+# Async command model: POST to submit, GET to poll result
+commands:
+  async: true
+  submit:
+    path: "/commands"
+    method: POST
+    body_key: "type"
+    payload_key: "payload"
+  poll:
+    path: "/commands/{{id}}"
+    method: GET
+    id_path: "commandId"
+    terminal_statuses:
+      - completed
+      - failed
+      - blocked
+      - rejected
+    poll_interval_ms: 500
+    max_polls: 20
+
+# GET endpoints (read-only, for state inspection)
+read_endpoints:
+  - name: "world_status"
+    path: "/world/status"
+    auth: false
+  - name: "city"
+    path: "/city"
+    auth: true
+  - name: "generals"
+    path: "/generals"
+    auth: true
+  - name: "armies"
+    path: "/armies"
+    auth: true
+  - name: "inbox"
+    path: "/inbox"
+    auth: true
+  - name: "profile"
+    path: "/profile"
+    auth: true
+  - name: "sleep_plan"
+    path: "/sleep-plan"
+    auth: true
+  - name: "map"
+    path: "/map?q=0&r=0&s=0&radius=3"
+    auth: true
+  - name: "leaderboard"
+    path: "/leaderboard"
+    auth: false
+
+# Command endpoints (write operations via async command model)
+command_endpoints:
+  - name: "season_join"
+    type: "season.join"
+    payload_schema: {}
+
+  - name: "city_build"
+    type: "city.build"
+    payload_schema:
+      facilityType:
+        type: string
+        required: true
+        enum:
+          - farm
+          - lumber_mill
+          - iron_mine
+          - quarry
+          - barracks
+          - warehouse
+          - wall
+          - watchtower
+
+  - name: "city_upgrade"
+    type: "city.upgrade"
+    payload_schema:
+      facilityId:
+        type: string
+        required: true
+
+  - name: "army_create"
+    type: "army.create"
+    payload_schema:
+      generalIds:
+        type: array
+        items:
+          type: string
+
+  - name: "army_disband"
+    type: "army.disband"
+    payload_schema:
+      armyId:
+        type: string
+        required: true
+
+  - name: "army_conscript"
+    type: "army.conscript"
+    payload_schema:
+      armyId:
+        type: string
+        required: true
+      slot:
+        type: integer
+        required: true
+        min: 0
+        max: 4
+      unitType:
+        type: string
+        required: true
+        enum:
+          - infantry
+          - cavalry
+          - archer
+      count:
+        type: integer
+        required: true
+        min: 1
+
+  - name: "army_march"
+    type: "army.march"
+    payload_schema:
+      armyId:
+        type: string
+        required: true
+      target:
+        type: object
+        required: true
+        properties:
+          q:
+            type: integer
+          r:
+            type: integer
+          s:
+            type: integer
+      confirmed:
+        type: boolean
+      ownerApproved:
+        type: boolean
+
+  - name: "army_return"
+    type: "army.return"
+    payload_schema:
+      armyId:
+        type: string
+        required: true
+
+  - name: "army_cancel"
+    type: "army.cancel"
+    payload_schema:
+      armyId:
+        type: string
+        required: true
+
+# Feedback endpoint
+feedback:
+  path: "/feedback"
+  method: POST
+  schema:
+    category:
+      type: string
+      enum: [ux, patrol, balance, bug, docs]
+    title:
+      type: string
+    detail:
+      type: string
+    metadata:
+      type: object
+
+# Invariant rules (properties that should always hold)
+invariants:
+  - name: "resources_non_negative"
+    description: "All resource values (food, wood, iron, stone) should be >= 0"
+  - name: "army_troop_non_negative"
+    description: "Troop counts in any army slot should be >= 0"
+  - name: "city_facility_valid"
+    description: "City facility levels should be positive integers"
+  - name: "command_idempotency"
+    description: "Duplicate commands should not produce double effects"
+
+# Resource names for economy tracking
+resources:
+  - food
+  - wood
+  - iron
+  - stone
